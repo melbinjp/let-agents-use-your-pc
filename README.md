@@ -36,13 +36,13 @@ The flow is as follows:
 
 Before you begin, please ensure you have the following:
 
-- A **Linux or macOS** machine. A fresh VM is highly recommended. (Windows is not currently supported by the installation script).
+- A **Linux or macOS** machine. For Windows users, please see the dedicated section below. A fresh VM is highly recommended.
 - A **Cloudflare account**. The free tier is sufficient.
 - `git` and `curl` must be installed on the machine. You can usually install them with `sudo apt update && sudo apt install git curl` (Debian/Ubuntu) or `sudo yum install git curl` (RedHat/CentOS).
 
 ---
 
-## 🚀 Installation
+## 🚀 Installation (Linux & macOS)
 
 The installation is automated via a single script. It will:
 1.  Detect your OS and architecture.
@@ -64,6 +64,40 @@ You will be prompted to set a username and password for Basic Authentication. Pl
 The script will then guide you through the **interactive Cloudflare setup**. This involves logging into your Cloudflare account in a browser and authorizing the tunnel.
 
 Once complete, the script will display your public tunnel URL (e.g., `https://your-tunnel-name.trycloudflare.com`). **This is the URL you will provide to the AI agent.**
+
+---
+
+## 🪟 Instructions for Windows Users
+
+The `install.sh` script is designed for Linux-based systems. For Windows users, the recommended approach is to use a Virtual Machine to run a lightweight Linux server. This provides the best security, isolation, and compatibility.
+
+Here are the high-level steps:
+
+1.  **Install Virtualization Software:** Download and install [Oracle VirtualBox](https://www.virtualbox.org/wiki/Downloads), a free and popular virtualization tool.
+
+2.  **Download a Linux ISO:** Download the server image for a stable Linux distribution. We recommend [Ubuntu Server LTS](https://ubuntu.com/download/server) because it's lightweight and widely supported.
+
+3.  **Create and Install the Linux VM:**
+    - Open VirtualBox and create a new virtual machine.
+    - During setup, point the "virtual optical disk" to the Ubuntu Server ISO you downloaded.
+    - Follow the on-screen instructions to install Ubuntu Server inside the VM. The default options are generally fine.
+    - For detailed instructions, you can follow the official [Ubuntu Server installation guide](https://ubuntu.com/tutorials/install-ubuntu-server).
+
+4.  **Configure VM Networking:**
+    - After the VM is installed, open its **Settings** in VirtualBox.
+    - Go to the **Network** tab.
+    - Change the "Attached to" dropdown from "NAT" to **"Bridged Adapter"**. This will make your VM appear as a separate device on your local network, which simplifies a lot of networking issues.
+
+5.  **Run the Installer inside the VM:**
+    - Start your new Linux VM and log in.
+    - You will be at a command-line terminal.
+    - From here, you can run the standard installation command as described in the section above. You will likely need to install `curl` first:
+      ```bash
+      sudo apt update && sudo apt install curl git
+      bash -c "$(curl -fsSL https://raw.githubusercontent.com/your-repo/main/install.sh)"
+      ```
+
+Your Jules Endpoint Agent will now be running inside the Linux VM, and the Cloudflare tunnel will securely expose it to the internet.
 
 ---
 
