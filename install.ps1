@@ -11,6 +11,14 @@ function Write-Error { param($Message) Write-Host "[ERROR] $Message" -Foreground
 
 # --- Main Script ---
 
+# TODO / HELP WANTED: Implement uninstallation logic.
+# This script should accept an `--uninstall` flag that performs the following actions:
+# - Stop the 'JulesEndpointAgent' and 'cloudflared' services.
+# - Delete the 'JulesEndpointAgent' and 'cloudflared' services.
+# - Delete the installation directory ('C:\Program Files\JulesEndpointAgent').
+# - Delete the Cloudflare tunnel.
+# - Remove the cloudflared config files from the user's profile.
+
 # 1. Welcome and Pre-flight Checks
 Write-Info "Welcome to the Jules Endpoint Agent installer for Windows."
 Write-Warn "Please review the security warnings in the README.md before proceeding."
@@ -99,6 +107,13 @@ Set-Content -Path $RunnerScriptPath -Value $runnerScriptContent
 
 # 6. Set up Windows Services
 Write-Info "Setting up Windows services..."
+
+# HELP WANTED: The method below passes the agent's password as a plain text argument
+# to the Windows service binary path. This is a security risk, as it can be viewed by
+# anyone with administrative access to the machine.
+# A more secure method would be to store the credentials in a protected file or use
+# a different method to pass them to the service. If you have ideas on how to
+# improve this, please open an issue or a pull request!
 Write-Warn "The agent's password will be stored in the service configuration. This is a security risk if the machine is not properly secured."
 
 # Service for shell2http

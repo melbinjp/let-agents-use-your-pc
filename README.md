@@ -94,6 +94,15 @@ Service management commands can be found in the output of the installation scrip
 
 ---
 
+## 🤝 Contributing
+
+We welcome contributions from the community! Whether it's reporting a bug, suggesting a feature, or submitting code changes, your help is greatly appreciated.
+
+- **[Contribution Guidelines](./CONTRIBUTING.md):** Learn how to submit issues and pull requests.
+- **[Manual Testing Guide](./TESTING.md):** Find out how to test your changes before submitting.
+
+---
+
 ## 🗑️ Uninstallation
 
 An uninstallation feature will be added in a future update. For now, you will need to manually stop and delete the system services and remove the installation directory.

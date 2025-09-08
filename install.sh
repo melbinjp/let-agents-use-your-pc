@@ -34,6 +34,14 @@ error() {
 
 # --- Main Script ---
 
+# TODO / HELP WANTED: Implement uninstallation logic.
+# This script should accept an `--uninstall` flag that performs the following actions:
+# - Stop and disable the 'jules-endpoint' and 'cloudflared' services.
+# - Delete the service files.
+# - Delete the installation directory ('/usr/local/etc/jules-endpoint-agent').
+# - Delete the binaries ('/usr/local/bin/shell2http', '/usr/local/bin/cloudflared').
+# - Delete the Cloudflare tunnel.
+
 # 1. Welcome and Pre-flight Checks
 info "Welcome to the Jules Endpoint Agent installer."
 info "This script will set up your machine as a remote execution endpoint."
