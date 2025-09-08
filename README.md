@@ -1,6 +1,6 @@
 # Jules Endpoint Agent
 
-Welcome to the Jules Endpoint Agent! This project provides a set of scripts to turn any Linux or macOS machine into a secure, remotely-accessible execution endpoint. An AI agent like Jules can then use this endpoint to perform tasks like cloning repositories, running tests, and executing build commands in a real development environment.
+Welcome to the Jules Endpoint Agent! This project provides a set of scripts to turn any Windows, macOS, or Linux machine into a secure, remotely-accessible execution endpoint. An AI agent like Jules can then use this endpoint to perform tasks like cloning repositories, running tests, and executing build commands in a real development environment.
 
 This is ideal for giving an AI agent access to more powerful hardware, specific development tools, or a persistent environment that survives beyond a single session.
 
@@ -8,7 +8,7 @@ This is ideal for giving an AI agent access to more powerful hardware, specific 
 
 ## 🛑 Security Warning
 
-**This is extremely important.** By installing this agent, you are creating a bridge between the public internet and a shell on your machine. The `runner.sh` script is designed to execute arbitrary commands sent to it.
+**This is extremely important.** By installing this agent, you are creating a bridge between the public internet and a shell on your machine. The runner scripts (`runner.sh` and `runner.ps1`) are designed to execute arbitrary commands sent to them.
 
 While we use a secure tunnel (`cloudflared`) and recommend authentication, this setup grants significant control to the connecting agent.
 
@@ -16,7 +16,7 @@ While we use a secure tunnel (`cloudflared`) and recommend authentication, this 
 - **Run this on a dedicated, sandboxed virtual machine (VM).** Do not run it on your primary personal or work machine.
 - **Never expose the `shell2http` port directly.** Only access it through the secure Cloudflare tunnel.
 - **Use the strongest authentication method you can.** The default installation will guide you to set up a username and password.
-- **Review the scripts (`install.sh`, `runner.sh`) before running them** to understand what they do.
+- **Review the installation scripts before running them** to understand what they do.
 
 ---
 
@@ -25,102 +25,75 @@ While we use a secure tunnel (`cloudflared`) and recommend authentication, this 
 The system is built on two key open-source tools:
 
 1.  **[Cloudflared](https://github.com/cloudflare/cloudflared):** Creates a secure, persistent tunnel from your machine to the Cloudflare network. This means you don't need to configure firewalls, port forwarding, or deal with dynamic IP addresses. You get a stable, public HTTPS URL.
-2.  **[shell2http](https://github.com/msoap/shell2http):** A simple web server that executes a shell script (`runner.sh`) whenever it receives an HTTP request. It's configured to pass request data as environment variables to the script.
+2.  **[shell2http](https://github.com/msoap/shell2http):** A simple web server that executes a shell script (`runner.sh` or `runner.ps1`) whenever it receives an HTTP request.
 
 The flow is as follows:
-`Jules -> HTTPS Request -> Cloudflare Tunnel -> cloudflared (on your VM) -> shell2http -> runner.sh (executes git clone, etc.)`
+`Jules -> HTTPS Request -> Cloudflare Tunnel -> cloudflared (on your machine) -> shell2http -> Runner Script`
 
 ---
 
-## 📋 Prerequisites
+## 🚀 Installation
 
-Before you begin, please ensure you have the following:
+This project uses platform-specific installation scripts to automate the setup. Please choose the instructions for your operating system.
 
-- A **Linux or macOS** machine. For Windows users, please see the dedicated section below. A fresh VM is highly recommended.
-- A **Cloudflare account**. The free tier is sufficient.
-- `git` and `curl` must be installed on the machine. You can usually install them with `sudo apt update && sudo apt install git curl` (Debian/Ubuntu) or `sudo yum install git curl` (RedHat/CentOS).
+### 💻 Installation (Native Windows)
 
----
+This method installs the agent directly on Windows, allowing it to run Windows-native commands.
 
-## 🚀 Installation (Linux & macOS)
+**Prerequisites:**
+- Windows 10/11 or Windows Server 2016 or newer.
+- [Git for Windows](https://git-scm.com/download/win) must be installed.
+- PowerShell 5.1 or newer (comes standard with modern Windows).
 
-The installation is automated via a single script. It will:
-1.  Detect your OS and architecture.
-2.  Download the correct binaries for `cloudflared` and `shell2http`.
-3.  Install the binaries to `/usr/local/bin`.
-4.  Create the `runner.sh` script in `/usr/local/etc/jules-endpoint-agent`.
-5.  Set up a `systemd` (Linux) or `launchd` (macOS) service to run the endpoint persistently.
-6.  Guide you through the final Cloudflare Tunnel configuration.
+**Instructions:**
+1. Open **PowerShell as an Administrator**.
+2. Run the following command to download and execute the installer. This will set up all necessary files and Windows services.
 
-To start the installation, run the following command in your terminal:
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/your-repo/main/install.ps1'))
+```
+*(Note: The URL above is a placeholder. The correct URL will be provided once the project is in a repository.)*
+
+### 🐧 🍏 Installation (Linux & macOS)
+
+This method installs the agent on Linux or macOS systems.
+
+**Prerequisites:**
+- A Linux or macOS machine.
+- `git` and `curl` must be installed.
+
+**Instructions:**
+1. Open your terminal.
+2. Run the following command. The script requires `sudo` privileges to install files and set up the system service.
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/your-repo/main/install.sh)"
 ```
-*(Note: The URL above is a placeholder. The correct URL will be provided once the project is in a repository.)*
+*(Note: The URL above is a placeholder.)*
 
-You will be prompted to set a username and password for Basic Authentication. Please choose a strong, unique password.
+### 🪟 Installation (Windows via Linux VM)
 
-The script will then guide you through the **interactive Cloudflare setup**. This involves logging into your Cloudflare account in a browser and authorizing the tunnel.
+This is an alternative for Windows users who prefer to run the agent in an isolated Linux environment.
 
-Once complete, the script will display your public tunnel URL (e.g., `https://your-tunnel-name.trycloudflare.com`). **This is the URL you will provide to the AI agent.**
-
----
-
-## 🪟 Instructions for Windows Users
-
-The `install.sh` script is designed for Linux-based systems. For Windows users, the recommended approach is to use a Virtual Machine to run a lightweight Linux server. This provides the best security, isolation, and compatibility.
-
-Here are the high-level steps:
-
-1.  **Install Virtualization Software:** Download and install [Oracle VirtualBox](https://www.virtualbox.org/wiki/Downloads), a free and popular virtualization tool.
-
-2.  **Download a Linux ISO:** Download the server image for a stable Linux distribution. We recommend [Ubuntu Server LTS](https://ubuntu.com/download/server) because it's lightweight and widely supported.
-
-3.  **Create and Install the Linux VM:**
-    - Open VirtualBox and create a new virtual machine.
-    - During setup, point the "virtual optical disk" to the Ubuntu Server ISO you downloaded.
-    - Follow the on-screen instructions to install Ubuntu Server inside the VM. The default options are generally fine.
-    - For detailed instructions, you can follow the official [Ubuntu Server installation guide](https://ubuntu.com/tutorials/install-ubuntu-server).
-
-4.  **Configure VM Networking:**
-    - After the VM is installed, open its **Settings** in VirtualBox.
-    - Go to the **Network** tab.
-    - Change the "Attached to" dropdown from "NAT" to **"Bridged Adapter"**. This will make your VM appear as a separate device on your local network, which simplifies a lot of networking issues.
-
-5.  **Run the Installer inside the VM:**
-    - Start your new Linux VM and log in.
-    - You will be at a command-line terminal.
-    - From here, you can run the standard installation command as described in the section above. You will likely need to install `curl` first:
-      ```bash
-      sudo apt update && sudo apt install curl git
-      bash -c "$(curl -fsSL https://raw.githubusercontent.com/your-repo/main/install.sh)"
-      ```
-
-Your Jules Endpoint Agent will now be running inside the Linux VM, and the Cloudflare tunnel will securely expose it to the internet.
+1.  **Install Virtualization Software:** Download and install [Oracle VirtualBox](https://www.virtualbox.org/wiki/Downloads).
+2.  **Download a Linux ISO:** We recommend [Ubuntu Server LTS](https://ubuntu.com/download/server).
+3.  **Create and Install the Linux VM:** Follow the on-screen instructions in VirtualBox to create and install a new Ubuntu VM.
+4.  **Configure VM Networking:** In the VM's Network settings, change "Attached to" to **"Bridged Adapter"**.
+5.  **Run the Linux Installer:** Start the VM, log in, and run the Linux/macOS installation command provided above.
 
 ---
 
 ## 🔧 Configuration & Customization
 
-- **Runner Script:** The core logic is in `/usr/local/etc/jules-endpoint-agent/runner.sh`. You can edit this file to change its behavior.
-- **Service Management (Linux):**
-    - `sudo systemctl start jules-endpoint`
-    - `sudo systemctl stop jules-endpoint`
-    - `sudo systemctl status jules-endpoint`
-    - `sudo journalctl -u jules-endpoint -f` (to view logs)
-- **Service Management (macOS):**
-    - `sudo launchctl load /Library/LaunchDaemons/com.jules.endpoint.plist`
-    - `sudo launchctl unload /Library/LaunchDaemons/com.jules.endpoint.plist`
-- **Cloudflare Tunnel:** The tunnel configuration is located in your `~/.cloudflared` or `/etc/cloudflared` directory. You can manage it using the `cloudflared` command-line tool.
+The installation scripts handle the configuration automatically. The core logic for the agent is in the `runner` script located in the installation directory. You can edit this file to change its behavior.
+
+- **Windows:** `C:\Program Files\JulesEndpointAgent\runner.ps1`
+- **Linux/macOS:** `/usr/local/etc/jules-endpoint-agent/runner.sh`
+
+Service management commands can be found in the output of the installation scripts.
 
 ---
 
 ## 🗑️ Uninstallation
 
-To remove the agent and its services, you can run the uninstallation script (this feature will be added to `install.sh`):
-
-```bash
-# Placeholder for uninstallation command
-./install.sh --uninstall
-```
+An uninstallation feature will be added in a future update. For now, you will need to manually stop and delete the system services and remove the installation directory.
