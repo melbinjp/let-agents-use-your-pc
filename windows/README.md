@@ -27,11 +27,11 @@ PowerShell is the modern, standard scripting language for Windows administration
 ### Running the Installer
 1. **Clone the Repository:** First, clone this repository to your local machine.
    ```powershell
-   git clone https://github.com/melbinjp/let-agent-use-your-pc.git
+   git clone https://github.com/melbinjp/let-agents-use-your-pc.git
    ```
 2. **Navigate to the Directory:** Open a PowerShell terminal and navigate into the `windows` directory within the cloned repository.
    ```powershell
-   cd let-agent-use-your-pc/windows
+   cd let-agents-use-your-pc/windows
    ```
 3. **Run the Installer:** Run the `install.ps1` script from this directory. You must run it from an **elevated (Administrator)** PowerShell terminal.
    ```powershell
