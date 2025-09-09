@@ -116,60 +116,15 @@ echo "JULES_USERNAME=$JULES_USERNAME" > "$AGENT_CRED_FILE"
 echo "JULES_PASSWORD=$JULES_PASSWORD" >> "$AGENT_CRED_FILE"
 chmod 600 "$AGENT_CRED_FILE"
 
-# Create runner.sh script using a heredoc
+# Copy the runner.sh script from the common directory
 info "Installing runner script to $AGENT_RUNNER_SCRIPT"
-cat > "$AGENT_RUNNER_SCRIPT" << 'EOF'
-#!/bin/bash
-set -euo pipefail
-if [ -z "${repo:-}" ] || [ -z "${branch:-}" ] || [ -z "${test_cmd:-}" ]; then
-  echo "[ERROR] Missing required environment variables: repo, branch, test_cmd" >&2
-  exit 1
-fi
-TMP_DIR=$(mktemp -d /tmp/jules-run-XXXXXX)
-trap 'echo "[INFO] Cleaning up..." >&2; rm -rf -- "$TMP_DIR"' EXIT
-cd "$TMP_DIR"
-echo "[INFO] Cloning $repo (branch: $branch)" >&2
-git clone --depth 1 -b "$branch" "$repo" "repo"
-cd "repo"
-echo "[INFO] Running: $test_cmd" >&2
-eval "$test_cmd"
-EOF
+cp ../common/runner.sh "$AGENT_RUNNER_SCRIPT"
 chmod +x "$AGENT_RUNNER_SCRIPT"
 
 # 6. Set up System Service
-if [ "$OS" = "linux" ]; then
-    info "Setting up systemd service for Linux..."
-    cat > "/etc/systemd/system/$SERVICE_NAME.service" << EOF
-[Unit]
-Description=Jules Endpoint Agent
-After=network.target
-
-[Service]
-Type=simple
-User=root
-EnvironmentFile=$AGENT_CRED_FILE
-ExecStart=/usr/local/bin/shell2http \\
-    -host 0.0.0.0 \\
-    -port $PORT \\
-    -form \\
-    -include-stderr \\
-    -500 \\
-    -basic-auth "\${JULES_USERNAME}:\${JULES_PASSWORD}" \\
-    /run "$AGENT_RUNNER_SCRIPT"
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-EOF
-    systemctl daemon-reload
-    systemctl enable "$SERVICE_NAME"
-    systemctl start "$SERVICE_NAME"
-    info "$SERVICE_NAME service started and enabled."
-
-elif [ "$OS" = "darwin" ]; then
-    info "Setting up launchd service for macOS..."
-    # Using a heredoc with a non-single-quoted EOF to allow variable expansion.
-    cat > "/Library/LaunchDaemons/com.jules.endpoint.plist" <<EOF
+info "Setting up launchd service for macOS..."
+# Using a heredoc with a non-single-quoted EOF to allow variable expansion.
+cat > "/Library/LaunchDaemons/com.jules.endpoint.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -198,9 +153,8 @@ elif [ "$OS" = "darwin" ]; then
 </dict>
 </plist>
 EOF
-    launchctl load "/Library/LaunchDaemons/com.jules.endpoint.plist"
-    info "launchd service loaded."
-fi
+launchctl load "/Library/LaunchDaemons/com.jules.endpoint.plist"
+info "launchd service loaded."
 
 # 7. Configure Cloudflare Tunnel
 info "--- Cloudflare Tunnel Setup ---"
@@ -234,11 +188,7 @@ EOF
 
 info "Installing cloudflared as a service..."
 cloudflared service install
-if [ "$OS" = "linux" ]; then
-    systemctl start cloudflared
-elif [ "$OS" = "darwin" ]; then
-    launchctl start com.cloudflare.cloudflared
-fi
+launchctl start com.cloudflare.cloudflared
 
 info "--- SETUP COMPLETE ---"
 echo

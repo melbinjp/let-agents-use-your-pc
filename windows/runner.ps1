@@ -47,11 +47,19 @@ try {
 
     # Execute the provided command.
     # The output of this command will be the main body of the HTTP response.
-    Invoke-Expression -Command $env:test_cmd
-
-    $lastExitCode = $LASTEXITCODE
-    Write-Host "[INFO] ---"
-    Write-Host "[INFO] Command finished with exit code $lastExitCode."
+    try {
+        # Using "cmd /c" is a robust way to execute an arbitrary command string
+        # and correctly capture its exit code.
+        & cmd.exe /c $env:test_cmd
+        $lastExitCode = $LASTEXITCODE
+        Write-Host "[INFO] ---"
+        Write-Host "[INFO] Command finished with exit code $lastExitCode."
+        exit $lastExitCode
+    }
+    catch {
+        Write-Error "[ERROR] A terminating error occurred: $_"
+        exit 1
+    }
 }
 finally {
     Write-Host "[INFO] Cleaning up temporary directory..."

@@ -96,7 +96,17 @@ try {
     git clone --depth 1 -b $env:branch $env:repo "repo"
     Set-Location -Path (Join-Path $tempDir.FullName "repo")
     Write-Host "[INFO] Executing: $env:test_cmd"
-    Invoke-Expression -Command $env:test_cmd
+    try {
+        Invoke-Expression -Command $env:test_cmd
+        $lastExitCode = $LASTEXITCODE
+        Write-Host "[INFO] ---"
+        Write-Host "[INFO] Command finished with exit code $lastExitCode."
+        exit $lastExitCode
+    }
+    catch {
+        Write-Error "[ERROR] A terminating error occurred: $_"
+        exit 1
+    }
 }
 finally {
     Write-Host "[INFO] Cleaning up..."
@@ -160,6 +170,6 @@ Write-Info "cloudflared service installed and started."
 Write-Info "--- SETUP COMPLETE ---"
 Write-Info "Your Jules Endpoint Agent is now running on Windows!"
 Write-Info "  Username: $JulesUsername"
-$tunnelUrl = (Start-Process -FilePath $CloudflaredPath -ArgumentList "tunnel info $TunnelName" -NoNewWindow -PassThru -RedirectStandardOutput (Join-Path $TempDir "cf.log")); Wait-Process $tunnelUrl.Id; (Get-Content (Join-Path $TempDir "cf.log") | Select-String -Pattern "trycloudflare.com" | Select-Object -First 1).Line.Split(' ')[0]
+$tunnelUrl = "https://{0}.trycloudflare.com" -f $TunnelName
 Write-Warn "  Your public URL is: $tunnelUrl"
 Write-Info "Please provide the username and the public URL to the AI agent."
