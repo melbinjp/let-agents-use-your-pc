@@ -17,14 +17,14 @@ RUN apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 
 # Install shell2http
-RUN curl -sL "https://github.com/msoap/shell2http/releases/download/1.17.0/shell2http-1.17.0.linux_amd64.tar.gz" | tar -xz -C /usr/local/bin
+RUN curl -sL "https://github.com/msoap/shell2http/releases/download/v1.17.0/shell2http_1.17.0_linux_amd64.tar.gz" | tar -xz -C /usr/local/bin
 
 # Install cloudflared
 RUN curl -sL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64" -o /usr/local/bin/cloudflared && \
     chmod +x /usr/local/bin/cloudflared
 
 # Copy the runner script into the image from the common directory
-COPY ../common/runner.sh /usr/local/bin/runner.sh
+COPY common/runner.sh /usr/local/bin/runner.sh
 RUN chmod +x /usr/local/bin/runner.sh
 
 # Create the entrypoint script
