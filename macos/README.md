@@ -26,11 +26,11 @@ This directory contains the necessary scripts to install the Jules Endpoint Agen
 ### Running the Installer
 1. **Clone the Repository:** First, clone this repository to your local machine.
    ```bash
-   git clone https://github.com/your-repo/jules-endpoint-agent.git
+   git clone https://github.com/melbinjp/let-agent-use-your-pc.git
    ```
 2. **Navigate to the Directory:** Open a terminal and navigate into the `macos` directory within the cloned repository.
    ```bash
-   cd jules-endpoint-agent/macos
+   cd let-agent-use-your-pc/macos
    ```
 3. **Run the Installer:** Run the `install.sh` script with `sudo`.
    ```bash

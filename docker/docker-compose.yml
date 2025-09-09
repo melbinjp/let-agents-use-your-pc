@@ -6,8 +6,10 @@ version: '3.8'
 
 services:
   jules-agent:
-    # Build the image from the Dockerfile in the current directory.
-    build: .
+    # Build the image using the repo root as the context.
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     # Name the container for easier management.
     container_name: jules-agent
     # Restart the container automatically if it stops.
