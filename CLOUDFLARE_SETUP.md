@@ -2,19 +2,20 @@
 
 This guide provides comprehensive instructions for exposing the agent's endpoint to the internet using Cloudflare Tunnels. This allows you to interact with the agent from anywhere, securely.
 
-There are two primary methods to set this up, designed to cater to different needs. Please choose the one that best fits your situation.
+## Which Method Should I Use?
 
-- **Method 1: Permanent Tunnel (Recommended)**
-  - **Use Case:** You have a Cloudflare account and want a stable, permanent address for your agent. This is the recommended approach for any long-term use.
-  - **Requires:** A free Cloudflare account.
+The options described in this guide apply when you are using the **VS Code Extension** to run the agent inside Docker.
 
-- **Method 2: Temporary "Quick" Tunnel**
-  - **Use Case:** You want to quickly test the agent without setting up a Cloudflare account or you don't have a domain name. The address will be random and will only last as long as the agent is running.
-  - **Requires:** Nothing.
+-   **If you are using the VS Code Extension (Recommended for most users):**
+    -   Choose **Method 1 (Permanent Tunnel)** if you have a Cloudflare account and want a stable, predictable URL for your agent.
+    -   Choose **Method 2 (Temporary Tunnel)** if you want to get started as quickly as possible, without needing a Cloudflare account.
+
+-   **If you are using the standalone installer scripts (`linux/install.sh`, `macos/install.sh`, etc.):**
+    -   These scripts install the agent as a permanent, long-running service on your machine. They use an interactive `cloudflared login` flow that requires a Cloudflare account. For this reason, the temporary tunnel option has not been implemented for this workflow yet.
 
 ---
 
-## Method 1: Permanent Tunnel (Using a Cloudflare Account)
+## Method 1: Permanent Tunnel (for the VS Code Extension)
 
 This method provides you with a stable, named endpoint (e.g., `my-agent.trycloudflare.com`) that is tied to your Cloudflare account.
 
@@ -53,7 +54,7 @@ This method provides you with a stable, named endpoint (e.g., `my-agent.trycloud
 
 ---
 
-## Method 2: Temporary "Quick" Tunnel (No Account Required)
+## Method 2: Temporary "Quick" Tunnel (for the VS Code Extension)
 
 This method is the fastest way to get started. It requires no setup in Cloudflare and is ideal for quick testing.
 
