@@ -54,17 +54,36 @@ async function activate(context) {
 				return;
 			}
 
-			// 2. Get credentials from user
+			// 2. Ask user for tunnel type
 			progress.report({ message: "Waiting for user input..." });
-			const cloudflareToken = await vscode.window.showInputBox({
-				prompt: 'Enter your Cloudflare Tunnel Token',
-				password: true,
-				ignoreFocusOut: true,
-				placeHolder: 'Paste your token here'
-			});
-			if (!cloudflareToken) {
+			const tunnelType = await vscode.window.showQuickPick(
+				[
+					{ label: 'Permanent Tunnel', description: 'Use a pre-configured Cloudflare Tunnel with a token.' },
+					{ label: 'Temporary Tunnel', description: 'Create a new temporary tunnel. No account needed.' }
+				],
+				{
+					placeHolder: 'Choose a Cloudflare Tunnel type',
+					ignoreFocusOut: true
+				}
+			);
+
+			if (!tunnelType) {
 				vscode.window.showInformationMessage('Jules Agent startup cancelled.');
 				return;
+			}
+
+			let cloudflareToken = '';
+			if (tunnelType.label === 'Permanent Tunnel') {
+				cloudflareToken = await vscode.window.showInputBox({
+					prompt: 'Enter your Cloudflare Tunnel Token',
+					password: true,
+					ignoreFocusOut: true,
+					placeHolder: 'Paste your token here'
+				});
+				if (!cloudflareToken) {
+					vscode.window.showInformationMessage('Jules Agent startup cancelled.');
+					return;
+				}
 			}
 
 			const julesUsername = await vscode.window.showInputBox({
@@ -113,7 +132,11 @@ async function activate(context) {
 
 			// 5. Run the Docker container
 			progress.report({ increment: 50, message: "Starting agent container..." });
-			const runCommand = `docker run -d --name ${DOCKER_CONTAINER_NAME} --restart unless-stopped -p 8080:8080 -e CLOUDFLARE_TOKEN="${cloudflareToken}" -e JULES_USERNAME="${julesUsername}" -e JULES_PASSWORD="${julesPassword}" ${DOCKER_IMAGE_NAME}`;
+			let runCommand = `docker run -d --name ${DOCKER_CONTAINER_NAME} --restart unless-stopped -p 8080:8080 -e JULES_USERNAME="${julesUsername}" -e JULES_PASSWORD="${julesPassword}"`;
+			if (cloudflareToken) {
+				runCommand += ` -e CLOUDFLARE_TOKEN="${cloudflareToken}"`;
+			}
+			runCommand += ` ${DOCKER_IMAGE_NAME}`;
 
             const runResult = await executeCommand(runCommand, outputChannel);
             if (!runResult.success) {
@@ -121,9 +144,34 @@ async function activate(context) {
                 return;
             }
 
-			progress.report({ increment: 10, message: "Agent started successfully!" });
-            await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2s for notification to be readable
-			vscode.window.showInformationMessage('Jules Agent started successfully!');
+			// 6. Handle tunnel URL
+			if (tunnelType.label === 'Temporary Tunnel') {
+				progress.report({ increment: 10, message: "Waiting for temporary tunnel URL..." });
+				outputChannel.appendLine("Waiting for temporary tunnel URL... This can take up to 30 seconds.");
+
+				// Poll logs for the URL
+				let tunnelUrl = '';
+				const startTime = Date.now();
+				while (Date.now() - startTime < 30000 && !tunnelUrl) { // 30 second timeout
+					await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2s between checks
+					const logResult = await executeCommand(`docker logs ${DOCKER_CONTAINER_NAME}`, outputChannel);
+					if (logResult.success) {
+						const urlMatch = logResult.stdout.match(/(https?:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com)/);
+						if (urlMatch) {
+							tunnelUrl = urlMatch[0];
+						}
+					}
+				}
+
+				if (tunnelUrl) {
+					vscode.window.showInformationMessage(`Jules Agent is running at: ${tunnelUrl}`);
+				} else {
+					vscode.window.showWarningMessage('Could not determine temporary tunnel URL. Please check the logs manually.');
+				}
+			} else {
+				progress.report({ increment: 10, message: "Agent started successfully!" });
+				vscode.window.showInformationMessage('Jules Agent started successfully! Your tunnel should be available at your configured Cloudflare address.');
+			}
 		});
 	});
 

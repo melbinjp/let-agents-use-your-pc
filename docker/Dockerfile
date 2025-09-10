@@ -29,12 +29,16 @@ RUN chmod +x /usr/local/bin/runner.sh
 
 # Create the entrypoint script
 RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'set -m' >> /entrypoint.sh && \
-    echo 'echo "[AGENT] Starting cloudflared tunnel..."' >> /entrypoint.sh && \
-    echo 'cloudflared tunnel --no-autoupdate run --token ${CLOUDFLARE_TOKEN} &' >> /entrypoint.sh && \
     echo 'echo "[AGENT] Starting shell2http server..."' >> /entrypoint.sh && \
-    echo 'shell2http -host 0.0.0.0 -port 8080 -form -include-stderr -500 -basic-auth "${JULES_USERNAME}:${JULES_PASSWORD}" /run "/usr/local/bin/runner.sh"' >> /entrypoint.sh && \
-    echo 'fg %1' >> /entrypoint.sh
+    echo 'shell2http -host 0.0.0.0 -port 8080 -form -include-stderr -500 -basic-auth "${JULES_USERNAME}:${JULES_PASSWORD}" /run "/usr/local/bin/runner.sh" &' >> /entrypoint.sh && \
+    echo 'echo "[AGENT] Starting cloudflared tunnel..."' >> /entrypoint.sh && \
+    echo 'if [ -n "${CLOUDFLARE_TOKEN}" ]; then' >> /entrypoint.sh && \
+    echo '  echo "[AGENT] Using permanent tunnel with token."' >> /entrypoint.sh && \
+    echo '  cloudflared tunnel --no-autoupdate run --token ${CLOUDFLARE_TOKEN}' >> /entrypoint.sh && \
+    echo 'else' >> /entrypoint.sh && \
+    echo '  echo "[AGENT] Using temporary tunnel."' >> /entrypoint.sh && \
+    echo '  cloudflared tunnel --no-autoupdate --url http://localhost:8080' >> /entrypoint.sh && \
+    echo 'fi' >> /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
 
