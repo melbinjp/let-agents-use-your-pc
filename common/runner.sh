@@ -27,8 +27,9 @@ set -o pipefail
 
 # --- Pre-flight Checks ---
 
-# Check that all required environment variables are set.
-if [ -z "${repo:-}" ] || [ -z "${branch:-}" ] || [ -z "${test_cmd:-}" ]; then
+# Check that all required environment variables are set from shell2http's -form flag.
+# shell2http passes form fields as environment variables with a "v_" prefix.
+if [ -z "${v_repo:-}" ] || [ -z "${v_branch:-}" ] || [ -z "${v_test_cmd:-}" ]; then
   echo "[ERROR] Missing required environment variables." >&2
   echo "[ERROR] Please provide 'repo', 'branch', and 'test_cmd' in the POST data." >&2
   exit 1
@@ -47,19 +48,19 @@ trap 'echo "[INFO] Cleaning up temporary directory..."; rm -rf -- "$TMP_DIR"' EX
 echo "[INFO] Created temporary directory at: $TMP_DIR"
 cd "$TMP_DIR"
 
-echo "[INFO] Cloning repository: $repo (branch: $branch)"
+echo "[INFO] Cloning repository: $v_repo (branch: $v_branch)"
 # Clone a specific branch with a depth of 1 for efficiency.
-git clone --depth 1 -b "$branch" "$repo" "repo"
+git clone --depth 1 -b "$v_branch" "$v_repo" "repo"
 cd "repo"
 
 echo "[INFO] Repository cloned. Current working directory: $(pwd)"
 echo "[INFO] ---"
-echo "[INFO] Executing command: $test_cmd"
+echo "[INFO] Executing command: $v_test_cmd"
 echo "[INFO] ---"
 
 # Execute the provided command.
 # The output of this command will be the main body of the HTTP response.
-eval "$test_cmd"
+eval "$v_test_cmd"
 
 echo "[INFO] ---"
 echo "[INFO] Command finished with exit code $?."
