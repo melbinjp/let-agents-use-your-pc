@@ -1,40 +1,50 @@
-# Jules Endpoint Agent: macOS Installation
+# Jules Endpoint Agent: macOS Installation (SSH Method)
 
-This directory contains the necessary scripts to install the Jules Endpoint Agent on a macOS machine. This method is recommended for users who need to provide a native macOS environment for building and testing projects (e.g., for iOS or macOS applications).
+This directory contains the necessary scripts to install the Jules Endpoint Agent on a macOS machine, providing secure remote access via an SSH tunnel powered by Cloudflare.
 
 ## File Descriptions
 
-- `install.sh`: The main installer script, written in Bash. It handles dependency checks, downloading binaries, and setting up `launchd` services for persistence.
-- `runner.sh`: The execution script. This is a Bash script that is called by `shell2http` to clone a Git repository and run the provided command.
+- `install.sh`: The main installer script. It handles dependency checks, downloads `cloudflared`, and configures the Cloudflare tunnel as a `launchd` service for persistence.
+- `runner.sh`: The execution script. This script is intended to be called by the connecting AI agent over the SSH connection. It is placed in `/usr/local/etc/jules-endpoint-agent/` for inspection.
 
 ## Design Choices & Technical Details
 
 ### Why Bash and launchd?
 - **Bash:** Bash is a standard shell available on macOS, ensuring the scripts run correctly.
-- **launchd:** `launchd` is the standard system for managing services and daemons on macOS. Using a `launchd` plist file is the correct, native way to ensure the agent's services run automatically and are managed by the OS.
+- **launchd:** `launchd` is the standard system for managing services on macOS. Using a `launchd` plist file is the correct, native way to ensure the `cloudflared` tunnel runs automatically.
 
 ### Security Considerations
-- **Root Privileges:** The `install.sh` script requires `sudo` access to install binaries into `/usr/local/bin` and to create the `launchd` plist file in `/Library/LaunchDaemons`.
-- **Credential Storage:** On macOS, the agent's username and password are included directly in the `/Library/LaunchDaemons/com.jules.endpoint.plist` file. This file is protected by system permissions and only readable by the root user, but this is a known platform-specific trade-off.
+- **Root Privileges:** The `install.sh` script requires `sudo` access to install `cloudflared` into `/usr/local/bin` and to create service and configuration files.
+- **SSH Authentication:** This setup relies on SSH public key authentication, which is significantly more secure than password-based methods. The agent's public key must be added to the appropriate `~/.ssh/authorized_keys` file on the host machine.
 
 ## Installation Instructions
 
 ### Prerequisites
 - A macOS machine.
-- `git` and `curl` must be installed. They are typically available by default, or can be installed with the Xcode Command Line Tools.
+- **Remote Login** must be enabled. You can do this in `System Settings` > `General` > `Sharing`.
+- `git` and `curl` must be installed. They are typically available by default or can be installed with the Xcode Command Line Tools.
 
 ### Running the Installer
-1. **Clone the Repository:** First, clone this repository to your local machine.
+1. **Clone the Repository:**
    ```bash
    git clone https://github.com/melbinjp/let-agents-use-your-pc.git
    ```
-2. **Navigate to the Directory:** Open a terminal and navigate into the `macos` directory within the cloned repository.
+2. **Navigate to the Directory:**
    ```bash
    cd let-agents-use-your-pc/macos
    ```
-3. **Run the Installer:** Run the `install.sh` script with `sudo`.
+3. **Run the Installer:**
    ```bash
    sudo ./install.sh
    ```
 
-The script will guide you through the rest of the process. Once complete, it will provide you with the public URL for your agent.
+The script will guide you through the Cloudflare login and tunnel creation process.
+
+### Post-Installation
+Once the script is complete, you must add the AI agent's public SSH key to the `authorized_keys` file of the user you wish the agent to run as. For example:
+```bash
+# As the target user (e.g., 'dev')
+echo "ssh-ed25519 AAAAC3... agent@example.com" >> ~/.ssh/authorized_keys
+```
+
+The installer will provide you with the SSH connection command to give to the agent.
