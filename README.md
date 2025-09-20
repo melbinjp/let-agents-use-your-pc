@@ -38,6 +38,7 @@ Please choose the installation method that best fits your operating system and u
 ### 🐳 For Docker Environments (High-Performance & Isolated)
 - **Go to: [`./docker/`](./docker/)**
 - **This is the recommended method for most users on any OS** who want a secure, isolated, and high-performance Linux environment. It is the best option for tasks that require **GPU acceleration**.
+- **For full setup instructions, see: [`CLOUDFLARE_SETUP.md`](./CLOUDFLARE_SETUP.md)**
 
 ### 📦 For VirtualBox Environments (Legacy or High-Isolation)
 - **Go to: [`./virtualbox/`](./virtualbox/)**

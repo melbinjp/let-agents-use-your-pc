@@ -25,9 +25,6 @@ RUN curl -sL "https://github.com/cloudflare/cloudflared/releases/latest/download
 COPY common/runner.sh /usr/local/bin/runner.sh
 RUN chmod +x /usr/local/bin/runner.sh
 
-# Copy the cloudflared config file
-COPY docker/config.yml /etc/cloudflared/config.yml
-
 # Create the entrypoint script
 RUN echo '#!/bin/bash' > /entrypoint.sh && \
     echo 'echo "[AGENT] Starting SSH server..."' >> /entrypoint.sh && \
@@ -35,7 +32,7 @@ RUN echo '#!/bin/bash' > /entrypoint.sh && \
     echo 'echo "[AGENT] Starting cloudflared tunnel..."' >> /entrypoint.sh && \
     echo 'if [ -n "${CLOUDFLARE_TOKEN}" ]; then' >> /entrypoint.sh && \
     echo '  echo "[AGENT] Using permanent tunnel with token."' >> /entrypoint.sh && \
-    echo '  cloudflared tunnel --no-autoupdate --config /etc/cloudflared/config.yml run --token ${CLOUDFLARE_TOKEN}' >> /entrypoint.sh && \
+    echo '  cloudflared tunnel --no-autoupdate run --token ${CLOUDFLARE_TOKEN}' >> /entrypoint.sh && \
     echo 'else' >> /entrypoint.sh && \
     echo '  echo "[AGENT] Using temporary tunnel."' >> /entrypoint.sh && \
     echo '  cloudflared tunnel --no-autoupdate --url ssh://localhost:22' >> /entrypoint.sh && \
