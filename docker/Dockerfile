@@ -13,11 +13,9 @@ RUN apt-get update && apt-get install -y \
     git \
     openssl \
     ca-certificates \
+    openssh-server \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
-
-# Install shell2http
-RUN curl -sL "https://github.com/msoap/shell2http/releases/download/v1.17.0/shell2http_1.17.0_linux_amd64.tar.gz" | tar -xz -C /usr/local/bin
 
 # Install cloudflared
 RUN curl -sL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64" -o /usr/local/bin/cloudflared && \
@@ -27,23 +25,33 @@ RUN curl -sL "https://github.com/cloudflare/cloudflared/releases/latest/download
 COPY common/runner.sh /usr/local/bin/runner.sh
 RUN chmod +x /usr/local/bin/runner.sh
 
+# Copy the cloudflared config file
+COPY docker/config.yml /etc/cloudflared/config.yml
+
 # Create the entrypoint script
 RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'echo "[AGENT] Starting shell2http server..."' >> /entrypoint.sh && \
-    echo 'shell2http -host 0.0.0.0 -port 8080 -form -include-stderr -500 -basic-auth "${JULES_USERNAME}:${JULES_PASSWORD}" /run "/usr/local/bin/runner.sh" &' >> /entrypoint.sh && \
+    echo 'echo "[AGENT] Starting SSH server..."' >> /entrypoint.sh && \
+    echo 'service ssh start' >> /entrypoint.sh && \
     echo 'echo "[AGENT] Starting cloudflared tunnel..."' >> /entrypoint.sh && \
     echo 'if [ -n "${CLOUDFLARE_TOKEN}" ]; then' >> /entrypoint.sh && \
     echo '  echo "[AGENT] Using permanent tunnel with token."' >> /entrypoint.sh && \
-    echo '  cloudflared tunnel --no-autoupdate run --token ${CLOUDFLARE_TOKEN}' >> /entrypoint.sh && \
+    echo '  cloudflared tunnel --no-autoupdate --config /etc/cloudflared/config.yml run --token ${CLOUDFLARE_TOKEN}' >> /entrypoint.sh && \
     echo 'else' >> /entrypoint.sh && \
     echo '  echo "[AGENT] Using temporary tunnel."' >> /entrypoint.sh && \
-    echo '  cloudflared tunnel --no-autoupdate --url http://localhost:8080' >> /entrypoint.sh && \
+    echo '  cloudflared tunnel --no-autoupdate --url ssh://localhost:22' >> /entrypoint.sh && \
     echo 'fi' >> /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
 
-# Expose the port shell2http will run on
-EXPOSE 8080
+# Add user and set up passwordless sudo
+RUN useradd -m -s /bin/bash jules
+RUN usermod -aG sudo jules
+RUN echo "jules:jules" | chpasswd
+RUN echo "root:root" | chpasswd
+RUN echo "jules ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Expose the SSH port
+EXPOSE 22
 
 # Run the entrypoint script
 ENTRYPOINT ["/entrypoint.sh"]

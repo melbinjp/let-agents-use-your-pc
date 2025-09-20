@@ -21,6 +21,8 @@ This repository contains several methods for installing the agent, each tailored
 
 Please choose the installation method that best fits your operating system and use case. Each directory contains a detailed `README.md` file with specific instructions.
 
+**Note:** This project has recently been updated to use a direct SSH connection through Cloudflare Tunnels, replacing the previous `ttyd`-based web shell. This provides a more secure and robust connection.
+
 ### 🐧 For Native Linux Environments
 - **Go to: [`./linux/`](./linux/)**
 - Use this method to install the agent directly on a modern Linux distribution (e.g., Ubuntu, Debian, Fedora, CentOS).

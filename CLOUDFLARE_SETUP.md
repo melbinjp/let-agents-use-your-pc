@@ -1,6 +1,6 @@
 # Setting Up Cloudflare Tunnels for a Public Endpoint
 
-This guide provides comprehensive instructions for exposing the agent's endpoint to the internet using Cloudflare Tunnels. This allows you to interact with the agent from anywhere, securely.
+This guide provides comprehensive instructions for exposing the agent's endpoint to the internet using Cloudflare Tunnels. This allows you to interact with the agent from anywhere, securely, via SSH.
 
 ## Which Method Should I Use?
 
@@ -44,13 +44,38 @@ This method provides you with a stable, named endpoint (e.g., `my-agent.trycloud
 ![Cloudflare Tunnel Token Location](https://i.imgur.com/your-image-placeholder.png)
 *(Note: A placeholder image would go here showing where to find the token. For now, please refer to the text description.)*
 
-### Step 5: Start the Agent with the Token
+### Step 5: Configure the Tunnel for SSH
+
+1. In the tunnel's configuration page, go to the "Public Hostnames" tab.
+2. Click "Add a public hostname".
+3. Configure the hostname as follows:
+    - **Subdomain:** Choose a subdomain for your SSH connection (e.g., `ssh`).
+    - **Domain:** Select your domain.
+    - **Service:**
+        - **Type:** SSH
+        - **URL:** localhost:22
+
+### Step 6: Start the Agent with the Token
 
 1.  In Visual Studio Code, run the command **"Jules: Start Agent"**.
 2.  When prompted to choose a tunnel type, select **"Permanent Tunnel"**.
 3.  When asked for your **Cloudflare Tunnel Token**, paste the token you copied from the dashboard.
-4.  Provide a username and password for your agent.
-5.  The agent will start, and the tunnel will be connected. You can now access your agent at the public URL associated with your tunnel (e.g., `https://your-tunnel-name.trycloudflare.com`). You can find this URL in your Cloudflare Tunnels dashboard.
+4.  The agent will start, and the tunnel will be connected.
+
+### Step 7: Connect via SSH
+
+1.  You will need to have `cloudflared` installed on your local machine. You can find installation instructions [here](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/).
+2.  You will also need to add the following to your local SSH config file (`~/.ssh/config`):
+    ```
+    Host your-subdomain.your-domain.com
+        ProxyCommand /usr/local/bin/cloudflared access ssh --hostname %h
+    ```
+    (Replace `/usr/local/bin/cloudflared` with the actual path to your `cloudflared` executable).
+3.  You can now connect to the agent using the following command:
+    ```
+    ssh jules@your-subdomain.your-domain.com
+    ```
+    The password is `jules`.
 
 ---
 
@@ -62,13 +87,12 @@ This method is the fastest way to get started. It requires no setup in Cloudflar
 
 1.  In Visual Studio Code, run the command **"Jules: Start Agent"**.
 2.  When prompted to choose a tunnel type, select **"Temporary Tunnel"**.
-3.  Provide a username and password for your agent.
 
 ### Step 2: Get Your Public URL
 
 1.  The agent will start in a Docker container. In the background, it will automatically create a temporary, secure tunnel to the Cloudflare network.
 2.  After a few moments (it can sometimes take up to 30 seconds), a notification will appear in VS Code with your unique, randomly generated public URL.
 3.  The URL will look something like this: `https://some-random-words.trycloudflare.com`
-4.  You can now use this URL to interact with the agent.
+4.  You can now use this URL to connect to the agent via SSH. Follow the instructions in "Step 7: Connect via SSH" of Method 1, but use the temporary URL as the hostname.
 
 **Important:** This URL is temporary. If you stop and restart the agent, a new, different URL will be generated.
