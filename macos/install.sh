@@ -122,7 +122,7 @@ CF_CONFIG_DIR="/etc/cloudflared"
 mkdir -p "$CF_CONFIG_DIR"
 cat > "$CF_CONFIG_DIR/config.yml" << EOF
 tunnel: $TUNNEL_UUID
-credentials-file: /var/root/.cloudflared/$TUNNEL_UUID.json
+credentials-file: $HOME/.cloudflared/$TUNNEL_UUID.json
 
 ingress:
   - hostname: $TUNNEL_NAME.trycloudflare.com

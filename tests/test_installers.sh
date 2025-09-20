@@ -43,6 +43,13 @@ for script in "${INSTALL_SCRIPTS[@]}"; do
 
     # Test Case 2: Ensure the Cloudflare service is not configured for HTTP.
     assert_not_contains "$script" "service: http://localhost" "Cloudflare ingress should be configured for SSH, not HTTP."
+
+    # Test Case 3: Ensure credentials path is not hardcoded to a root-specific directory.
+    if [[ "$script" == "linux/install.sh" ]]; then
+        assert_not_contains "$script" "credentials-file: /root/.cloudflared" "Credentials path should not be hardcoded to /root."
+    elif [[ "$script" == "macos/install.sh" ]]; then
+        assert_not_contains "$script" "credentials-file: /var/root/.cloudflared" "Credentials path should not be hardcoded to /var/root."
+    fi
 done
 
 echo "---"
