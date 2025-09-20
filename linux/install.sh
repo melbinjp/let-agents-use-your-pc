@@ -118,12 +118,22 @@ TUNNEL_UUID=$(cloudflared tunnel list | grep "$TUNNEL_NAME" | awk '{print $1}')
 info "Configuring the tunnel to point to the local SSH service..."
 CF_CONFIG_DIR="/etc/cloudflared"
 mkdir -p "$CF_CONFIG_DIR"
+
+# Determine the home directory for the credentials file.
+# If run with sudo, use the home directory of the invoking user.
+# Otherwise, use the home directory of the current user (root).
+if [ -n "$SUDO_USER" ]; then
+    CRED_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+else
+    CRED_HOME=$HOME
+fi
+
 cat > "$CF_CONFIG_DIR/config.yml" << EOF
 tunnel: $TUNNEL_UUID
-credentials-file: $HOME/.cloudflared/$TUNNEL_UUID.json
+credentials-file: ${CRED_HOME}/.cloudflared/${TUNNEL_UUID}.json
 
 ingress:
-  - hostname: $TUNNEL_NAME.trycloudflare.com
+  - hostname: ${TUNNEL_NAME}.trycloudflare.com
     service: ssh://localhost:22
   - service: http_status:404
 EOF

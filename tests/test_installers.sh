@@ -50,6 +50,11 @@ for script in "${INSTALL_SCRIPTS[@]}"; do
     elif [[ "$script" == "macos/install.sh" ]]; then
         assert_not_contains "$script" "credentials-file: /var/root/.cloudflared" "Credentials path should not be hardcoded to /var/root."
     fi
+
+    # Test Case 4: Ensure the credentials file path in config.yml uses the invoking user's home directory.
+    if [[ "$script" == "linux/install.sh" ]]; then
+        assert_not_contains "$script" "credentials-file: \$HOME/.cloudflared" "Credentials path in config.yml should use the invoking user's home directory, not the root's."
+    fi
 done
 
 echo "---"
