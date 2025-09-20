@@ -14,9 +14,7 @@ services:
     container_name: jules-agent
     # Restart the container automatically if it stops.
     restart: unless-stopped
-    # Expose the agent's port to the host machine.
-    ports:
-      - "8080:8080"
+    # The agent uses a Cloudflare Tunnel for SSH access, so no ports need to be exposed.
     # Environment variables required by the agent.
     # IMPORTANT: You must fill in these values before running!
     environment:

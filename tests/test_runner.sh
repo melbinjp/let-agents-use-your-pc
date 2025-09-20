@@ -46,52 +46,47 @@ EOF
   rm -f "$BATS_TMPDIR/git_args.log"
 }
 
-@test "displays error and exits when 'v_repo' is missing" {
-  run bash -c "v_branch=main v_test_cmd=ls $RUNNER_SCRIPT 2>&1"
+@test "displays error and exits when arguments are missing" {
+  run "$RUNNER_SCRIPT" "some/repo" "main"
   [ "$status" -eq 1 ]
-  [[ "$output" =~ "[ERROR] Missing required environment variables." ]]
+  [[ "$output" =~ "[ERROR] Invalid number of arguments." ]]
 }
 
-@test "displays error and exits when 'v_branch' is missing" {
-  run bash -c "v_repo=some/repo v_test_cmd=ls $RUNNER_SCRIPT 2>&1"
+@test "displays error and exits with too many arguments" {
+  run "$RUNNER_SCRIPT" "some/repo" "main" "ls" "extra-arg"
   [ "$status" -eq 1 ]
-  [[ "$output" =~ "[ERROR] Missing required environment variables." ]]
-}
-
-@test "displays error and exits when 'v_test_cmd' is missing" {
-  run bash -c "v_repo=some/repo v_branch=main $RUNNER_SCRIPT 2>&1"
-  [ "$status" -eq 1 ]
-  [[ "$output" =~ "[ERROR] Missing required environment variables." ]]
+  [[ "$output" =~ "[ERROR] Invalid number of arguments." ]]
 }
 
 @test "exits with non-zero status when command fails" {
   COMMAND="exit 123"
-  run bash -c "v_repo=any/repo v_branch=main v_test_cmd='$COMMAND' $RUNNER_SCRIPT"
+  run "$RUNNER_SCRIPT" "any/repo" "main" "$COMMAND"
   [ "$status" -eq 123 ]
   TMP_DIR=$(echo "$output" | grep "Created temporary directory" | sed 's/.*: //')
   [ -n "$TMP_DIR" ]
   [ ! -d "$TMP_DIR" ]
 }
 
-@test "is vulnerable to command injection" {
-  # This command appears harmless, but it injects 'touch /tmp/injection_test'
-  # which will be executed by `eval`.
-  COMMAND="echo harmless output ; touch $BATS_TMPDIR/injection_test"
+@test "eval executes chained commands" {
+  # This test documents that `eval` will execute multiple commands
+  # chained with a semicolon.
+  INJECTION_FILE="$BATS_TMPDIR/injection_test"
+  COMMAND="echo harmless output ; touch $INJECTION_FILE"
 
-  run bash -c "v_repo=any/repo v_branch=main v_test_cmd='$COMMAND' $RUNNER_SCRIPT"
+  run "$RUNNER_SCRIPT" "any/repo" "main" "$COMMAND"
 
-  # The script should still succeed because the final command (`touch`) exits with 0.
+  # The script should succeed because the final command (`touch`) exits with 0.
   [ "$status" -eq 0 ]
 
-  # The dangerous side-effect: an unexpected file was created.
-  [ -f "$BATS_TMPDIR/injection_test" ]
+  # The side-effect: the injected file WAS created.
+  [ -f "$INJECTION_FILE" ]
 }
 
 @test "fails when a command in a pipe fails (pipefail)" {
   # 'false' will exit with 1, but 'true' will exit with 0.
   # Without 'set -o pipefail', this command would succeed.
   COMMAND="false | true"
-  run bash -c "v_repo=any/repo v_branch=main v_test_cmd='$COMMAND' $RUNNER_SCRIPT"
+  run "$RUNNER_SCRIPT" "any/repo" "main" "$COMMAND"
 
   [ "$status" -ne 0 ]
 }
@@ -100,7 +95,7 @@ EOF
   # Configure the mock git to fail
   echo 'exit 1' > "$MOCK_GIT_DIR/git"
 
-  run bash -c "v_repo=any/repo v_branch=main v_test_cmd=ls $RUNNER_SCRIPT"
+  run "$RUNNER_SCRIPT" "any/repo" "main" "ls"
   [ "$status" -ne 0 ]
   TMP_DIR=$(echo "$output" | grep "Created temporary directory" | sed 's/.*: //')
   [ -n "$TMP_DIR" ]
@@ -114,7 +109,7 @@ EOF
   BRANCH="main"
   COMMAND="ls -F"
 
-  run bash -c "v_repo=$REPO_URL v_branch=$BRANCH v_test_cmd='$COMMAND' $RUNNER_SCRIPT"
+  run "$RUNNER_SCRIPT" "$REPO_URL" "$BRANCH" "$COMMAND"
   [ "$status" -eq 0 ]
   GIT_LOG="$BATS_TMPDIR/git_args.log"
   [ -f "$GIT_LOG" ]
