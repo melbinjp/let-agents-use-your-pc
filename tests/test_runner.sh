@@ -73,6 +73,29 @@ EOF
   [ ! -d "$TMP_DIR" ]
 }
 
+@test "is vulnerable to command injection" {
+  # This command appears harmless, but it injects 'touch /tmp/injection_test'
+  # which will be executed by `eval`.
+  COMMAND="echo harmless output ; touch $BATS_TMPDIR/injection_test"
+
+  run bash -c "v_repo=any/repo v_branch=main v_test_cmd='$COMMAND' $RUNNER_SCRIPT"
+
+  # The script should still succeed because the final command (`touch`) exits with 0.
+  [ "$status" -eq 0 ]
+
+  # The dangerous side-effect: an unexpected file was created.
+  [ -f "$BATS_TMPDIR/injection_test" ]
+}
+
+@test "fails when a command in a pipe fails (pipefail)" {
+  # 'false' will exit with 1, but 'true' will exit with 0.
+  # Without 'set -o pipefail', this command would succeed.
+  COMMAND="false | true"
+  run bash -c "v_repo=any/repo v_branch=main v_test_cmd='$COMMAND' $RUNNER_SCRIPT"
+
+  [ "$status" -ne 0 ]
+}
+
 @test "exits with non-zero status when git clone fails" {
   # Configure the mock git to fail
   echo 'exit 1' > "$MOCK_GIT_DIR/git"
