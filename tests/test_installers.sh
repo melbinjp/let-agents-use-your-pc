@@ -8,7 +8,7 @@
 set -e # Exit immediately if a command exits with a non-zero status.
 
 # --- Test Configuration ---
-INSTALL_SCRIPTS=("linux/install.sh" "macos/install.sh")
+INSTALL_SCRIPTS=("linux/install.sh" "macos/install.sh" "windows/install.ps1")
 FAIL=0
 
 # --- Helper Functions ---
