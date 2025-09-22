@@ -1,22 +1,18 @@
 #!/bin/bash
 
-# jules-endpoint-agent: install.sh
+# jules-endpoint-agent: install.sh (SSH Edition)
 #
 # This script automates the setup of the Jules Endpoint Agent.
-# It installs shell2http and cloudflared, configures them to run as
-# services, and guides the user through the final setup steps.
+# It installs openssh-server and cloudflared, configures them to work
+# together, and creates a secure SSH endpoint accessible via a public URL.
 
 # --- Configuration ---
-# Exit on any error, treat unset variables as errors, and fail pipelines on first error.
 set -euo pipefail
 
 # --- Constants ---
-SHELL2HTTP_VERSION="1.17.0"
-AGENT_CONFIG_DIR="/usr/local/etc/jules-endpoint-agent"
-AGENT_RUNNER_SCRIPT="$AGENT_CONFIG_DIR/runner.sh"
-AGENT_CRED_FILE="$AGENT_CONFIG_DIR/credentials"
-SERVICE_NAME="jules-endpoint"
-PORT="8080" # Local port for shell2http
+AGENT_USER="jules"
+CLOUDFLARED_CONFIG_DIR="/etc/cloudflared"
+CLOUDFLARED_CONFIG_FILE="$CLOUDFLARED_CONFIG_DIR/config.yml"
 
 # --- Helper Functions ---
 info() {
@@ -34,17 +30,9 @@ error() {
 
 # --- Main Script ---
 
-# TODO / HELP WANTED: Implement uninstallation logic.
-# This script should accept an `--uninstall` flag that performs the following actions:
-# - Stop and disable the 'jules-endpoint' and 'cloudflared' services.
-# - Delete the service files.
-# - Delete the installation directory ('/usr/local/etc/jules-endpoint-agent').
-# - Delete the binaries ('/usr/local/bin/shell2http', '/usr/local/bin/cloudflared').
-# - Delete the Cloudflare tunnel.
-
 # 1. Welcome and Pre-flight Checks
-info "Welcome to the Jules Endpoint Agent installer."
-info "This script will set up your machine as a remote execution endpoint."
+info "Welcome to the Jules Endpoint Agent installer (SSH Edition)."
+info "This script will set up your machine as a remote SSH endpoint."
 warn "Please review the security warnings in the README.md before proceeding."
 echo
 
@@ -54,139 +42,107 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Check for dependencies
-if ! command -v curl &> /dev/null || ! command -v git &> /dev/null; then
-    error "Both 'curl' and 'git' are required. Please install them and re-run this script."
+if ! command -v curl &> /dev/null; then
+    error "'curl' is required. Please install it and re-run this script."
 fi
 
-# 2. Gather User Input for Authentication
-info "I need to configure Basic Authentication for the endpoint."
-read -p "Enter a username for the agent to use: " JULES_USERNAME
-while true; do
-    read -s -p "Enter a password for the agent: " JULES_PASSWORD
-    echo
-    read -s -p "Confirm password: " JULES_PASSWORD_CONFIRM
-    echo
-    [ "$JULES_PASSWORD" = "$JULES_PASSWORD_CONFIRM" ] && break
-    warn "Passwords do not match. Please try again."
-done
+# 2. Gather User Input for SSH Key
+info "I need the public SSH key for the AI agent that will connect to this endpoint."
+warn "The key should be a single line (e.g., 'ssh-rsa AAAA...')."
+read -p "Paste the agent's public SSH key: " JULES_SSH_PUBLIC_KEY
+if [[ -z "$JULES_SSH_PUBLIC_KEY" ]]; then
+    error "The SSH public key cannot be empty."
+fi
 
-# 3. Detect OS and Architecture
+# 3. Install Dependencies (openssh-server and cloudflared)
+
+info "Updating package lists..."
+apt-get update
+
+info "Installing openssh-server..."
+apt-get install -y openssh-server
+systemctl enable ssh
+systemctl start ssh
+
+info "openssh-server installed and enabled."
+
+# Download and install cloudflared
+info "Downloading and installing cloudflared..."
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
-
 case "$ARCH" in
     x86_64) ARCH="amd64" ;;
     aarch64) ARCH="arm64" ;;
     arm64) ARCH="arm64" ;;
     *) error "Unsupported architecture: $ARCH" ;;
 esac
-
-info "Detected OS: $OS, Architecture: $ARCH"
-
-# 4. Download and Install Binaries
-
-# Create temporary directory for downloads
-TMP_DIR=$(mktemp -d)
-trap 'rm -rf -- "$TMP_DIR"' EXIT
-cd "$TMP_DIR"
-
-# Download and install shell2http
-info "Downloading shell2http v$SHELL2HTTP_VERSION..."
-S2H_URL="https://github.com/msoap/shell2http/releases/download/$SHELL2HTTP_VERSION/shell2http-$SHELL2HTTP_VERSION.$OS'_'$ARCH.tar.gz"
-curl -sL "$S2H_URL" | tar -xz
-mv shell2http /usr/local/bin/shell2http
-chmod +x /usr/local/bin/shell2http
-info "shell2http installed successfully."
-
-# Download and install cloudflared
-info "Downloading cloudflared..."
 CF_URL="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-$OS-$ARCH"
 curl -sL -o /usr/local/bin/cloudflared "$CF_URL"
 chmod +x /usr/local/bin/cloudflared
 info "cloudflared installed successfully."
 
-# 5. Create Configuration Files and Runner Script
+# 4. Create and Configure Agent User
+info "Creating a dedicated user for the agent: '$AGENT_USER'"
+if id "$AGENT_USER" &>/dev/null; then
+    warn "User '$AGENT_USER' already exists. Skipping user creation."
+else
+    useradd -m -s /bin/bash "$AGENT_USER"
+    info "User '$AGENT_USER' created."
+fi
 
-info "Creating configuration directory: $AGENT_CONFIG_DIR"
-mkdir -p "$AGENT_CONFIG_DIR"
+info "Configuring SSH access for '$AGENT_USER'..."
+AGENT_HOME=$(eval echo ~$AGENT_USER)
+SSH_DIR="$AGENT_HOME/.ssh"
+AUTH_KEYS_FILE="$SSH_DIR/authorized_keys"
 
-# Create credentials file
-info "Storing credentials securely."
-echo "JULES_USERNAME=$JULES_USERNAME" > "$AGENT_CRED_FILE"
-echo "JULES_PASSWORD=$JULES_PASSWORD" >> "$AGENT_CRED_FILE"
-chmod 600 "$AGENT_CRED_FILE"
+mkdir -p "$SSH_DIR"
+echo "$JULES_SSH_PUBLIC_KEY" > "$AUTH_KEYS_FILE"
 
-# Copy the runner.sh script from the common directory
-info "Installing runner script to $AGENT_RUNNER_SCRIPT"
-cp ../common/runner.sh "$AGENT_RUNNER_SCRIPT"
-chmod +x "$AGENT_RUNNER_SCRIPT"
+chown -R "$AGENT_USER:$AGENT_USER" "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+chmod 600 "$AUTH_KEYS_FILE"
 
-# 6. Set up System Service
-info "Setting up systemd service for Linux..."
-cat > "/etc/systemd/system/$SERVICE_NAME.service" << EOF
-[Unit]
-Description=Jules Endpoint Agent
-After=network.target
+info "SSH key added and permissions set."
 
-[Service]
-Type=simple
-User=root
-EnvironmentFile=$AGENT_CRED_FILE
-ExecStart=/usr/local/bin/shell2http \\
-    -host 0.0.0.0 \\
-    -port $PORT \\
-    -form \\
-    -include-stderr \\
-    -500 \\
-    -basic-auth "\${JULES_USERNAME}:\${JULES_PASSWORD}" \\
-    /run "$AGENT_RUNNER_SCRIPT"
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-EOF
-systemctl daemon-reload
-systemctl enable "$SERVICE_NAME"
-systemctl start "$SERVICE_NAME"
-info "$SERVICE_NAME service started and enabled."
-
-# 7. Configure Cloudflare Tunnel
+# 5. Configure and Install Cloudflare Tunnel
 info "--- Cloudflare Tunnel Setup ---"
 info "You will now be asked to log in to your Cloudflare account."
-info "A browser window will open. Please authorize the tunnel."
+info "A browser window may open. Please authorize the tunnel."
 read -p "Press Enter to continue..."
 
 cloudflared tunnel login
 
-TUNNEL_NAME="jules-endpoint-$(openssl rand -hex 4)"
+TUNNEL_NAME="jules-ssh-endpoint-$(openssl rand -hex 4)"
 info "Creating a new tunnel named: $TUNNEL_NAME"
-# The tunnel command may fail if the user already has a tunnel with that name.
-# This is unlikely but we should handle it gracefully.
-if ! cloudflared tunnel create "$TUNNEL_NAME"; then
-    error "Failed to create Cloudflare tunnel. Please check your Cloudflare account and try again."
-fi
-TUNNEL_UUID=$(cloudflared tunnel list | grep "$TUNNEL_NAME" | awk '{print $1}')
 
-info "Configuring the tunnel to point to the local service..."
-CF_CONFIG_DIR="/etc/cloudflared"
-mkdir -p "$CF_CONFIG_DIR"
-cat > "$CF_CONFIG_DIR/config.yml" << EOF
+# Create the tunnel and capture the UUID
+TUNNEL_UUID=$(cloudflared tunnel create "$TUNNEL_NAME" 2>/dev/null) || error "Failed to create Cloudflare tunnel. Please check your Cloudflare account and try again."
+info "Tunnel '$TUNNEL_NAME' with UUID $TUNNEL_UUID created."
+
+info "Configuring the tunnel to point to the local SSH service..."
+mkdir -p "$CLOUDFLARED_CONFIG_DIR"
+cat > "$CLOUDFLARED_CONFIG_FILE" << EOF
 tunnel: $TUNNEL_UUID
 credentials-file: /root/.cloudflared/$TUNNEL_UUID.json
 
 ingress:
   - hostname: "*"
-    service: http://localhost:$PORT
+    service: ssh://localhost:22
   - service: http_status:404
 EOF
 
 info "Installing cloudflared as a service..."
 cloudflared service install
 systemctl start cloudflared
+info "cloudflared service started."
 
+# 6. Final Instructions
+TUNNEL_HOSTNAME=$(cloudflared tunnel info $TUNNEL_NAME | grep -o 'https://[^ ]*' | sed 's/https:\/\///')
 info "--- SETUP COMPLETE ---"
 echo
 info "Your Jules Endpoint Agent is now running!"
-info "  Username: $JULES_USERNAME"
-warn "  Your public URL is: https://$TUNNEL_NAME.trycloudflare.com"
-info "Please provide the username and the public URL to the AI agent."
+info "  Agent User: $AGENT_USER"
+warn "  Your public SSH endpoint is: $TUNNEL_HOSTNAME"
+info "Provide this hostname to your AI agent. It should connect using the following command:"
+info "  ssh $AGENT_USER@$TUNNEL_HOSTNAME"
+info "The agent must use the private key corresponding to the public key you provided."

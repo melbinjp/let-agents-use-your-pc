@@ -16,30 +16,55 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# Install shell2http
-RUN curl -sL "https://github.com/msoap/shell2http/releases/download/v1.17.0/shell2http_1.17.0_linux_amd64.tar.gz" | tar -xz -C /usr/local/bin
+# Install openssh-server and sudo
+RUN apt-get update && apt-get install -y \
+    openssh-server \
+    sudo \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install cloudflared
 RUN curl -sL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64" -o /usr/local/bin/cloudflared && \
     chmod +x /usr/local/bin/cloudflared
 
-# Copy the runner script into the image from the common directory
-COPY common/runner.sh /usr/local/bin/runner.sh
-RUN chmod +x /usr/local/bin/runner.sh
+# Configure SSH server
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
+    sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
+    mkdir /run/sshd
 
 # Create the entrypoint script
 RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'set -m' >> /entrypoint.sh && \
-    echo 'echo "[AGENT] Starting cloudflared tunnel..."' >> /entrypoint.sh && \
-    echo 'cloudflared tunnel --no-autoupdate run --token ${CLOUDFLARE_TOKEN} &' >> /entrypoint.sh && \
-    echo 'echo "[AGENT] Starting shell2http server..."' >> /entrypoint.sh && \
-    echo 'shell2http -host 0.0.0.0 -port 8080 -form -include-stderr -500 -basic-auth "${JULES_USERNAME}:${JULES_PASSWORD}" /run "/usr/local/bin/runner.sh"' >> /entrypoint.sh && \
-    echo 'fg %1' >> /entrypoint.sh
+    echo 'set -e' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo 'if [ -z "$JULES_SSH_PUBLIC_KEY" ]; then' >> /entrypoint.sh && \
+    echo '  echo "ERROR: The JULES_SSH_PUBLIC_KEY environment variable must be set." >&2' >> /entrypoint.sh && \
+    echo '  exit 1' >> /entrypoint.sh && \
+    echo 'fi' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo '# Create a non-root user for the agent' >> /entrypoint.sh && \
+    echo 'useradd -m -s /bin/bash jules' >> /entrypoint.sh && \
+    echo 'echo "jules ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo '# Set up SSH for the new user' >> /entrypoint.sh && \
+    echo 'mkdir -p /home/jules/.ssh' >> /entrypoint.sh && \
+    echo 'echo "$JULES_SSH_PUBLIC_KEY" > /home/jules/.ssh/authorized_keys' >> /entrypoint.sh && \
+    echo 'chown -R jules:jules /home/jules/.ssh' >> /entrypoint.sh && \
+    echo 'chmod 700 /home/jules/.ssh' >> /entrypoint.sh && \
+    echo 'chmod 600 /home/jules/.ssh/authorized_keys' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo '# Start cloudflared tunnel in the background' >> /entrypoint.sh && \
+    echo 'echo "[AGENT] Starting cloudflared tunnel for SSH..."' >> /entrypoint.sh && \
+    echo 'cloudflared tunnel --no-autoupdate --url ssh://localhost:22 run --token ${CLOUDFLARE_TOKEN} &>/dev/null &' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo '# Start SSH server in the foreground' >> /entrypoint.sh && \
+    echo 'echo "[AGENT] Starting SSH server..."' >> /entrypoint.sh && \
+    echo '/usr/sbin/sshd -D' >> /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
 
-# Expose the port shell2http will run on
-EXPOSE 8080
+# Expose the SSH port
+EXPOSE 22
 
 # Run the entrypoint script
 ENTRYPOINT ["/entrypoint.sh"]

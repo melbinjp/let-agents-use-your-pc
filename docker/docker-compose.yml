@@ -14,19 +14,19 @@ services:
     container_name: jules-agent
     # Restart the container automatically if it stops.
     restart: unless-stopped
-    # Expose the agent's port to the host machine.
+    # Expose the SSH port to the host machine. Mapping to 2222 on the host
+    # to avoid potential conflicts with the host's own SSH service.
     ports:
-      - "8080:8080"
+      - "2222:22"
     # Environment variables required by the agent.
     # IMPORTANT: You must fill in these values before running!
     environment:
       # Get this token from the Cloudflare Zero Trust dashboard.
       # It's a long string that authorizes the tunnel.
       - CLOUDFLARE_TOKEN=YOUR_CLOUDFLARE_TOKEN_HERE
-      # Set the username you want the AI agent to use for authentication.
-      - JULES_USERNAME=jules
-      # Set a strong password for the AI agent.
-      - JULES_PASSWORD=a_very_strong_password_123
+      # Paste the AI agent's PUBLIC SSH key here.
+      # The agent will use its private key to authenticate.
+      - JULES_SSH_PUBLIC_KEY=ssh-rsa ... your_agent_public_key
 
     # --- GPU Acceleration (Optional) ---
     # Uncomment the following section if you have an NVIDIA GPU and have installed

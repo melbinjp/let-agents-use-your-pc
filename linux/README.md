@@ -1,40 +1,49 @@
-# Jules Endpoint Agent: Linux Installation
+# Jules Endpoint Agent: Native Linux Installation (SSH)
 
-This directory contains the necessary scripts to install the Jules Endpoint Agent on a Linux machine. This method is recommended for users who want to provide a native Linux environment for building and testing projects.
+This directory contains the script to install the Jules Endpoint Agent directly on a modern Linux distribution (e.g., Ubuntu, Debian).
 
-## File Descriptions
+This method configures your machine as a secure, remotely-accessible SSH endpoint, which an AI agent can connect to for development tasks.
 
-- `install.sh`: The main installer script, written in Bash. It handles dependency checks, downloading binaries, and setting up `systemd` services for persistence.
-- `runner.sh`: The execution script. This is a Bash script that is called by `shell2http` to clone a Git repository and run the provided command.
+## How it Works
 
-## Design Choices & Technical Details
-
-### Why Bash and systemd?
-- **Bash:** Bash is the de facto standard shell for scripting on nearly all Linux distributions, ensuring maximum compatibility.
-- **systemd:** `systemd` is the standard init system and service manager for most modern Linux distributions (including Ubuntu, Debian, Fedora, CentOS, etc.). Using `systemd` is the most robust and conventional way to ensure the agent's services run automatically and are managed correctly by the OS.
-
-### Security Considerations
-- **Root Privileges:** The `install.sh` script requires `sudo` access to install binaries into `/usr/local/bin` and to create service files in `/etc/systemd/system`.
-- **Credential Storage:** The agent's username and password are stored in a file at `/usr/local/etc/jules-endpoint-agent/credentials`. The installer sets the permissions of this file to `600` so that it is only readable by the root user, providing a reasonable level of security.
+The `install.sh` script automates the entire setup process:
+1.  **Installs Dependencies**: It installs `openssh-server` (the standard SSH server for Linux) and `cloudflared` (the Cloudflare Tunnel client).
+2.  **Creates an Agent User**: It creates a dedicated, non-root user account named `jules` to isolate the agent's activities.
+3.  **Configures SSH**: It prompts you for the agent's public SSH key and adds it to the `jules` user's `authorized_keys` file. This ensures secure, passwordless authentication.
+4.  **Creates a Secure Tunnel**: It uses `cloudflared` to create a secure tunnel from your local SSH server (on port 22) to the Cloudflare network, making it accessible via a public hostname without opening any ports on your firewall.
+5.  **Sets up Services**: It ensures that both the `sshd` and `cloudflared` services are enabled to run automatically on system startup.
 
 ## Installation Instructions
 
 ### Prerequisites
-- A modern Linux distribution that uses `systemd`.
-- `git` and `curl` must be installed (`sudo apt install git curl` or `sudo yum install git curl`).
+- A modern Debian-based Linux distribution (e.g., Ubuntu 20.04+, Debian 10+).
+- You must have `sudo` or root access to the machine.
+- You must have an SSH key pair for your AI agent. The script will ask you for the **public key**.
 
 ### Running the Installer
-1. **Clone the Repository:** First, clone this repository to your local machine.
-   ```bash
-   git clone https://github.com/melbinjp/let-agents-use-your-pc.git
-   ```
-2. **Navigate to the Directory:** Open a terminal and navigate into the `linux` directory within the cloned repository.
-   ```bash
-   cd let-agents-use-your-pc/linux
-   ```
-3. **Run the Installer:** Run the `install.sh` script with `sudo`.
-   ```bash
-   sudo ./install.sh
-   ```
 
-The script will guide you through the rest of the process. Once complete, it will provide you with the public URL for your agent.
+1.  **Clone the Repository:**
+    ```bash
+    git clone <repo-url>
+    cd <repo-name>/linux
+    ```
+2.  **Make the Script Executable:**
+    ```bash
+    chmod +x install.sh
+    ```
+3.  **Run with Sudo:**
+    ```bash
+    sudo ./install.sh
+    ```
+4.  **Follow the Prompts:**
+    - The script will first ask you to **paste the agent's public SSH key**.
+    - It will then ask you to **log in to your Cloudflare account** in a browser to authorize the tunnel creation.
+5.  **Get Your Connection Info:**
+    - At the end of the installation, the script will display the public hostname for your new SSH endpoint (e.g., `your-tunnel-name.trycloudflare.com`).
+    - The agent will use this hostname to connect. The final command will look like this:
+    ```bash
+    ssh jules@<your-tunnel-hostname>
+    ```
+
+## Uninstallation
+To remove the agent and all its components, a corresponding `uninstall.sh` script will be provided. (This is part of the implementation plan).
