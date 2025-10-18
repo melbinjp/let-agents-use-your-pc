@@ -1,0 +1,116 @@
+# AI Agent Hardware Access - .gitignore
+
+# ============================================
+# CRITICAL: Sensitive configuration files
+# NEVER COMMIT THESE!
+# ============================================
+*.key
+*.pem
+*_key
+*_key.pub
+*_rsa
+*_rsa.pub
+*.token
+*.secret
+mcp-server-config.json
+cloudflare-config.json
+.env
+configs/
+docker/.env
+docker/data/
+
+# Log files
+*.log
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE and Editor files
+.vscode/
+.idea/
+.kiro/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Generated files (user copies these to their projects)
+# These should NOT be committed - they contain user-specific connection info
+generated_files/
+generated_repo_files/
+ai_agent_connection.*
+connection_info.*
+
+# Setup configuration (user-specific)
+setup_config.json
+production_validation_report.json
+.workspace_state.json
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Tunnel configurations
+tunnel_config.yml
+tunnel_credentials.json
+
+# SSH configurations
+ssh_config
+known_hosts
+
+# Backup files
+*.bak
+*.backup
+backup_*/

@@ -45,5 +45,86 @@ The `install.sh` script automates the entire setup process:
     ssh jules@<your-tunnel-hostname>
     ```
 
+### Connection Information
+
+After successful installation, the script will display your connection details:
+
+```
+=== Jules Connection Information ===
+SSH Hostname: your-tunnel-name.trycloudflare.com
+Username: jules
+Connection Command: ssh jules@your-tunnel-name.trycloudflare.com
+
+Jules can now connect using this information.
+```
+
+You can also retrieve this information later:
+```bash
+./connection-info.sh
+```
+
+### Verification
+
+Verify your installation is working correctly:
+
+```bash
+# Check service status
+sudo systemctl status ssh cloudflared
+
+# Test SSH connection locally
+ssh jules@localhost
+
+# Run diagnostics
+./test-connection-info.sh
+```
+
+### Troubleshooting
+
+**Installation Fails:**
+- Ensure you have sudo privileges
+- Check internet connectivity for package downloads
+- Verify your system is Ubuntu 20.04+ or Debian 10+
+
+**SSH Key Issues:**
+- Ensure the public key starts with `ssh-rsa`, `ssh-ed25519`, or similar
+- Check key format: `ssh-keygen -l -f your-key.pub`
+- Verify no extra whitespace or characters in the key
+
+**Cloudflare Authentication:**
+- Use a modern browser for the authentication step
+- Ensure you're logged into the correct Cloudflare account
+- Check that you have permission to create tunnels
+
+**Service Issues:**
+```bash
+# Restart services
+sudo systemctl restart ssh cloudflared
+
+# Check logs
+sudo journalctl -u ssh -f
+sudo journalctl -u cloudflared -f
+```
+
+For comprehensive troubleshooting, see [TROUBLESHOOTING.md](../TROUBLESHOOTING.md).
+
 ## Uninstallation
-To remove the agent and all its components, a corresponding `uninstall.sh` script will be provided. (This is part of the implementation plan).
+
+To completely remove the Jules Endpoint Agent:
+
+```bash
+sudo ./uninstall.sh
+```
+
+This will:
+- Stop and disable all services
+- Remove the `jules` user account
+- Delete Cloudflare tunnel configuration
+- Clean up all installed components
+
+## Security Considerations
+
+- The `jules` user has full sudo access for unrestricted hardware control
+- SSH access is key-based only (passwords disabled)
+- All traffic is encrypted through Cloudflare tunnels
+- No direct port exposure on your network
+- Consider running on dedicated/isolated systems for maximum security

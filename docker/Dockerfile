@@ -7,10 +7,21 @@ FROM ubuntu:22.04
 # Set non-interactive frontend for package installs
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies
+# Install basic dependencies and development tools
 RUN apt-get update && apt-get install -y \
     curl \
+    wget \
     git \
+    vim \
+    nano \
+    htop \
+    tree \
+    unzip \
+    build-essential \
+    python3 \
+    python3-pip \
+    nodejs \
+    npm \
     openssl \
     ca-certificates \
     --no-install-recommends && \
@@ -27,41 +38,65 @@ RUN apt-get update && apt-get install -y \
 RUN curl -sL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64" -o /usr/local/bin/cloudflared && \
     chmod +x /usr/local/bin/cloudflared
 
-# Configure SSH server
+# Configure SSH server with enhanced security settings
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
     sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
-    mkdir /run/sshd
+    sed -i 's/#AuthorizedKeysFile/AuthorizedKeysFile/' /etc/ssh/sshd_config && \
+    sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords no/' /etc/ssh/sshd_config && \
+    sed -i 's/#ChallengeResponseAuthentication yes/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config && \
+    sed -i 's/#UsePAM yes/UsePAM yes/' /etc/ssh/sshd_config && \
+    echo "ClientAliveInterval 60" >> /etc/ssh/sshd_config && \
+    echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config && \
+    mkdir -p /run/sshd
 
-# Create the entrypoint script
-RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'set -e' >> /entrypoint.sh && \
-    echo '' >> /entrypoint.sh && \
-    echo 'if [ -z "$JULES_SSH_PUBLIC_KEY" ]; then' >> /entrypoint.sh && \
-    echo '  echo "ERROR: The JULES_SSH_PUBLIC_KEY environment variable must be set." >&2' >> /entrypoint.sh && \
-    echo '  exit 1' >> /entrypoint.sh && \
-    echo 'fi' >> /entrypoint.sh && \
-    echo '' >> /entrypoint.sh && \
-    echo '# Create a non-root user for the agent' >> /entrypoint.sh && \
-    echo 'useradd -m -s /bin/bash jules' >> /entrypoint.sh && \
-    echo 'echo "jules ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers' >> /entrypoint.sh && \
-    echo '' >> /entrypoint.sh && \
-    echo '# Set up SSH for the new user' >> /entrypoint.sh && \
-    echo 'mkdir -p /home/jules/.ssh' >> /entrypoint.sh && \
-    echo 'echo "$JULES_SSH_PUBLIC_KEY" > /home/jules/.ssh/authorized_keys' >> /entrypoint.sh && \
-    echo 'chown -R jules:jules /home/jules/.ssh' >> /entrypoint.sh && \
-    echo 'chmod 700 /home/jules/.ssh' >> /entrypoint.sh && \
-    echo 'chmod 600 /home/jules/.ssh/authorized_keys' >> /entrypoint.sh && \
-    echo '' >> /entrypoint.sh && \
-    echo '# Start cloudflared tunnel in the background' >> /entrypoint.sh && \
-    echo 'echo "[AGENT] Starting cloudflared tunnel for SSH..."' >> /entrypoint.sh && \
-    echo 'cloudflared tunnel --no-autoupdate --url ssh://localhost:22 run --token ${CLOUDFLARE_TOKEN} &>/dev/null &' >> /entrypoint.sh && \
-    echo '' >> /entrypoint.sh && \
-    echo '# Start SSH server in the foreground' >> /entrypoint.sh && \
-    echo 'echo "[AGENT] Starting SSH server..."' >> /entrypoint.sh && \
-    echo '/usr/sbin/sshd -D' >> /entrypoint.sh
+# Create the entrypoint, health check, and connection info scripts
+COPY docker/entrypoint.sh /entrypoint.sh
+COPY docker/healthcheck.sh /healthcheck.sh
+COPY docker/connection-info.sh /app/connection-info.sh
+COPY docker/hardware-detection.sh /app/hardware-detection.sh
+COPY docker/performance-optimization.sh /app/performance-optimization.sh
 
-RUN chmod +x /entrypoint.sh
+# Copy security modules
+COPY linux/ssh-key-validator.sh /app/ssh-key-validator.sh
+COPY linux/ssh-security-hardening.sh /app/ssh-security-hardening.sh
+
+# Copy diagnostics modules
+COPY diagnostics/ /app/diagnostics/
+COPY diagnose.sh /app/diagnose.sh
+
+# Install additional diagnostic dependencies and hardware tools
+RUN apt-get update && apt-get install -y \
+    bc \
+    net-tools \
+    pciutils \
+    usbutils \
+    lshw \
+    hwinfo \
+    dmidecode \
+    util-linux \
+    smartmontools \
+    hdparm \
+    iotop \
+    sysstat \
+    stress-ng \
+    memtester \
+    cpufrequtils \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install NVIDIA Container Toolkit components (if available)
+RUN apt-get update && apt-get install -y \
+    nvidia-container-toolkit-base \
+    libnvidia-container-tools \
+    --no-install-recommends || true && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN chmod +x /entrypoint.sh /healthcheck.sh /app/connection-info.sh /app/ssh-key-validator.sh /app/ssh-security-hardening.sh /app/diagnose.sh /app/diagnostics/*.sh /app/hardware-detection.sh /app/performance-optimization.sh
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD /healthcheck.sh
 
 # Expose the SSH port
 EXPOSE 22
